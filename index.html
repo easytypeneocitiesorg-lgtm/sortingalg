@@ -15,17 +15,6 @@
     padding: 20px;
   }
 
-  h1 {
-    margin-bottom: 10px;
-  }
-
-  .controls {
-    display: flex;
-    gap: 10px;
-    margin-bottom: 15px;
-    align-items: center;
-  }
-
   #display {
     position: relative;
     width: 800px;
@@ -57,28 +46,17 @@
     font-size: 14px;
   }
 
-  button:disabled {
-    background: #555;
-    cursor: not-allowed;
-  }
-
   input[type="color"] {
-    border: none;
     width: 40px;
     height: 24px;
-    padding: 0;
+    border: none;
     background: transparent;
   }
 
-  .status {
-    margin-top: 10px;
-    font-size: 13px;
-    color: #aaa;
-  }
-
-  .dot-color-picker {
-    position: absolute;
-    display: none;
+  .controls {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 15px;
   }
 </style>
 </head>
@@ -87,39 +65,39 @@
 <h1>Color Physics Dots</h1>
 
 <div class="controls">
-  <label>
-    <span>Dot color:</span>
-    <input type="color" id="colorPicker" value="#ff0000" />
-  </label>
+  <input type="color" id="colorPicker" value="#ff0000" />
   <button id="addDotBtn">Add Dot</button>
+  <button id="autoBtn">Auto‑Generate</button>
   <button id="sortBtn">Color Physics Sort</button>
 </div>
 
 <div id="display"></div>
-<div class="status" id="status">
-  Click dots to recolor. Drag them. Press "Color Physics Sort" to see colors attract / repel.
-</div>
 
 <script>
 const display = document.getElementById("display");
 const addDotBtn = document.getElementById("addDotBtn");
+const autoBtn = document.getElementById("autoBtn");
 const sortBtn = document.getElementById("sortBtn");
 const colorPicker = document.getElementById("colorPicker");
-const status = document.getElementById("status");
 
 let isSorting = false;
 let sortInterval = null;
 
-// Helpers
+// Random position
 function getRandomPosition() {
   const rect = display.getBoundingClientRect();
-  const size = 20;
   return {
-    x: Math.random() * (rect.width - size),
-    y: Math.random() * (rect.height - size)
+    x: Math.random() * (rect.width - 20),
+    y: Math.random() * (rect.height - 20)
   };
 }
 
+// Random color
+function randomColor() {
+  return "#" + Math.floor(Math.random() * 16777215).toString(16).padStart(6, "0");
+}
+
+// Set dot position
 function setDotPosition(dot, x, y) {
   dot.style.left = x + "px";
   dot.style.top = y + "px";
@@ -127,6 +105,7 @@ function setDotPosition(dot, x, y) {
   dot.dataset.y = y;
 }
 
+// Create dot
 function createDot(color) {
   const dot = document.createElement("div");
   dot.className = "dot";
@@ -135,9 +114,9 @@ function createDot(color) {
   const pos = getRandomPosition();
   setDotPosition(dot, pos.x, pos.y);
 
-  dot.dataset.x = pos.x;
-  dot.dataset.y = pos.y;
   dot.dataset.color = color;
+  dot.dataset.vx = 0;
+  dot.dataset.vy = 0;
 
   enableDrag(dot);
   enableColorEdit(dot);
@@ -145,7 +124,7 @@ function createDot(color) {
   display.appendChild(dot);
 }
 
-// Drag
+// Dragging
 function enableDrag(dot) {
   let dragging = false;
   let offsetX = 0;
@@ -154,7 +133,6 @@ function enableDrag(dot) {
   dot.addEventListener("mousedown", (e) => {
     if (isSorting) return;
     dragging = true;
-    dot.style.cursor = "grabbing";
 
     const rect = dot.getBoundingClientRect();
     offsetX = e.clientX - rect.left;
@@ -168,33 +146,29 @@ function enableDrag(dot) {
     if (!dragging) return;
 
     const rect = display.getBoundingClientRect();
-    const size = 20;
-
     let x = e.clientX - rect.left - offsetX;
     let y = e.clientY - rect.top - offsetY;
 
-    x = Math.max(0, Math.min(rect.width - size, x));
-    y = Math.max(0, Math.min(rect.height - size, y));
+    x = Math.max(0, Math.min(rect.width - 20, x));
+    y = Math.max(0, Math.min(rect.height - 20, y));
 
     setDotPosition(dot, x, y);
   }
 
   function stop() {
     dragging = false;
-    dot.style.cursor = "grab";
     document.removeEventListener("mousemove", move);
     document.removeEventListener("mouseup", stop);
   }
 }
 
-// Recolor
+// Recoloring
 function enableColorEdit(dot) {
   dot.addEventListener("click", (e) => {
     if (isSorting) return;
 
     const picker = document.createElement("input");
     picker.type = "color";
-    picker.className = "dot-color-picker";
     picker.value = dot.dataset.color;
 
     picker.style.position = "fixed";
@@ -202,7 +176,6 @@ function enableColorEdit(dot) {
     picker.style.top = e.clientY + "px";
 
     document.body.appendChild(picker);
-    picker.focus();
     picker.click();
 
     picker.addEventListener("input", () => {
@@ -214,12 +187,9 @@ function enableColorEdit(dot) {
   });
 }
 
-// Color distance (simple RGB)
+// Color distance (normalized)
 function hexToRgb(hex) {
   hex = hex.replace("#", "");
-  if (hex.length === 3) {
-    hex = hex.split("").map(c => c + c).join("");
-  }
   const num = parseInt(hex, 16);
   return {
     r: (num >> 16) & 255,
@@ -234,100 +204,106 @@ function colorDistance(c1, c2) {
   const dr = a.r - b.r;
   const dg = a.g - b.g;
   const db = a.b - b.b;
-  return Math.sqrt(dr*dr + dg*dg + db*db);
+  return Math.sqrt(dr*dr + dg*dg + db*db) / 441.67;
 }
 
-// Physics sort: same colors attract, different repel
+// Physics sort
 function startColorPhysicsSort() {
   const dots = Array.from(display.querySelectorAll(".dot"));
-  if (dots.length < 2) {
-    status.textContent = "Need at least 2 dots.";
-    return;
-  }
+  if (dots.length < 2) return;
 
   isSorting = true;
   addDotBtn.disabled = true;
+  autoBtn.disabled = true;
   sortBtn.disabled = true;
-  status.textContent = "Color physics running...";
 
   const rect = display.getBoundingClientRect();
-  const size = 20;
-  const attractionStrength = 0.05;
-  const repulsionStrength = 0.08;
-  const maxStep = 3;
 
   if (sortInterval) clearInterval(sortInterval);
 
   sortInterval = setInterval(() => {
-    let totalMovement = 0;
+    let movement = 0;
 
     for (let i = 0; i < dots.length; i++) {
-      const dotA = dots[i];
-      let ax = parseFloat(dotA.dataset.x);
-      let ay = parseFloat(dotA.dataset.y);
-      const colorA = dotA.dataset.color;
+      const A = dots[i];
+      let ax = parseFloat(A.dataset.x);
+      let ay = parseFloat(A.dataset.y);
+      let vx = parseFloat(A.dataset.vx);
+      let vy = parseFloat(A.dataset.vy);
+
+      const colorA = A.dataset.color;
 
       let fx = 0;
       let fy = 0;
 
       for (let j = 0; j < dots.length; j++) {
         if (i === j) continue;
-        const dotB = dots[j];
-        const bx = parseFloat(dotB.dataset.x);
-        const by = parseFloat(dotB.dataset.y);
-        const colorB = dotB.dataset.color;
+
+        const B = dots[j];
+        const bx = parseFloat(B.dataset.x);
+        const by = parseFloat(B.dataset.y);
+        const colorB = B.dataset.color;
 
         let dx = bx - ax;
         let dy = by - ay;
         let dist = Math.sqrt(dx*dx + dy*dy) || 0.001;
 
-        const cd = colorDistance(colorA, colorB);
-
-        // Same color (small color distance) → attraction
-        // Different color (large color distance) → repulsion
-        const similarity = 1 - (cd / 441.67); // max RGB distance ~441.67
-        const attract = Math.max(similarity, 0);
-        const repel = Math.max(1 - similarity, 0);
-
-        // Normalize direction
         dx /= dist;
         dy /= dist;
 
-        // Attraction pulls towards B
-        fx += dx * attractionStrength * attract;
-        fy += dy * attractionStrength * attract;
+        const cd = colorDistance(colorA, colorB);
 
-        // Repulsion pushes away from B
-        fx -= dx * repulsionStrength * repel;
-        fy -= dy * repulsionStrength * repel;
+        const attract = (1 - cd) * (1 / dist);
+        const repel = cd * (1 / (dist * dist));
+
+        fx += dx * (attract - repel);
+        fy += dy * (attract - repel);
       }
 
-      // Apply force
-      let newX = ax + Math.max(-maxStep, Math.min(maxStep, fx * 50));
-      let newY = ay + Math.max(-maxStep, Math.min(maxStep, fy * 50));
+      vx += fx * 0.5;
+      vy += fy * 0.5;
 
-      // Clamp
-      newX = Math.max(0, Math.min(rect.width - size, newX));
-      newY = Math.max(0, Math.min(rect.height - size, newY));
+      vx *= 0.85;
+      vy *= 0.85;
 
-      totalMovement += Math.abs(newX - ax) + Math.abs(newY - ay);
-      setDotPosition(dotA, newX, newY);
+      let newX = ax + vx;
+      let newY = ay + vy;
+
+      newX = Math.max(0, Math.min(rect.width - 20, newX));
+      newY = Math.max(0, Math.min(rect.height - 20, newY));
+
+      movement += Math.abs(newX - ax) + Math.abs(newY - ay);
+
+      A.dataset.vx = vx;
+      A.dataset.vy = vy;
+
+      setDotPosition(A, newX, newY);
     }
 
-    // Stop when system stabilizes
-    if (totalMovement < 0.5) {
+    if (movement < 0.3) {
       clearInterval(sortInterval);
       isSorting = false;
       addDotBtn.disabled = false;
+      autoBtn.disabled = false;
       sortBtn.disabled = false;
-      status.textContent = "Color physics settled. Colors clustered, opposites pushed apart.";
     }
   }, 40);
+}
+
+// Auto-generate random dots
+function autoGenerateDots(count = 40) {
+  for (let i = 0; i < count; i++) {
+    createDot(randomColor());
+  }
 }
 
 // Events
 addDotBtn.addEventListener("click", () => {
   createDot(colorPicker.value);
+});
+
+autoBtn.addEventListener("click", () => {
+  autoGenerateDots(40);
 });
 
 sortBtn.addEventListener("click", () => {

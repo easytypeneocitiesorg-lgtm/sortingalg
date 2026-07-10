@@ -1,247 +1,274 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <title>Dot Sort Visualizer</title>
-  <style>
-    body {
-      font-family: system-ui, sans-serif;
-      background: #111;
-      color: #eee;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      margin: 0;
-      padding: 20px;
-    }
+<meta charset="UTF-8" />
+<title>Dot Color Sorter</title>
+<style>
+  body {
+    font-family: system-ui, sans-serif;
+    background: #111;
+    color: #eee;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    margin: 0;
+    padding: 20px;
+  }
 
-    h1 {
-      margin-bottom: 10px;
-    }
+  h1 {
+    margin-bottom: 10px;
+  }
 
-    .controls {
-      display: flex;
-      gap: 10px;
-      margin-bottom: 15px;
-      align-items: center;
-    }
+  .controls {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 15px;
+    align-items: center;
+  }
 
-    #display {
-      position: relative;
-      width: 800px;
-      height: 400px;
-      border: 2px solid #444;
-      border-radius: 8px;
-      background: #1a1a1a;
-      overflow: hidden;
-    }
+  #display {
+    position: relative;
+    width: 800px;
+    height: 400px;
+    border: 2px solid #444;
+    border-radius: 8px;
+    background: #1a1a1a;
+    overflow: hidden;
+  }
 
-    .dot {
-      position: absolute;
-      width: 18px;
-      height: 18px;
-      border-radius: 50%;
-      cursor: grab;
-      border: 1px solid #00000055;
-      box-shadow: 0 0 4px #000000aa;
-      transition: left 0.15s linear, top 0.15s linear;
-    }
+  .dot {
+    position: absolute;
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+    cursor: grab;
+    border: 1px solid #00000055;
+    box-shadow: 0 0 4px #000000aa;
+    transition: left 0.15s linear, top 0.15s linear, background-color 0.2s;
+  }
 
-    button {
-      padding: 6px 12px;
-      border-radius: 4px;
-      border: none;
-      cursor: pointer;
-      background: #3b82f6;
-      color: white;
-      font-size: 14px;
-    }
+  button {
+    padding: 6px 12px;
+    border-radius: 4px;
+    border: none;
+    cursor: pointer;
+    background: #3b82f6;
+    color: white;
+    font-size: 14px;
+  }
 
-    button:disabled {
-      background: #555;
-      cursor: not-allowed;
-    }
+  button:disabled {
+    background: #555;
+    cursor: not-allowed;
+  }
 
-    input[type="color"] {
-      border: none;
-      width: 40px;
-      height: 24px;
-      padding: 0;
-      background: transparent;
-    }
+  input[type="color"] {
+    border: none;
+    width: 40px;
+    height: 24px;
+    padding: 0;
+    background: transparent;
+  }
 
-    .status {
-      margin-top: 10px;
-      font-size: 13px;
-      color: #aaa;
-    }
-  </style>
+  .status {
+    margin-top: 10px;
+    font-size: 13px;
+    color: #aaa;
+  }
+
+  /* Hidden color picker for editing dots */
+  .dot-color-picker {
+    position: absolute;
+    display: none;
+  }
+</style>
 </head>
 <body>
-  <h1>Dot Sort Visualizer</h1>
 
-  <div class="controls">
-    <label>
-      <span>Dot color:</span>
-      <input type="color" id="colorPicker" value="#ff0000" />
-    </label>
-    <button id="addDotBtn">Add Dot</button>
-    <button id="sortBtn">Sort Dots</button>
-  </div>
+<h1>Dot Color Sorter</h1>
 
-  <div id="display"></div>
-  <div class="status" id="status">Drag dots around, then press "Sort Dots".</div>
+<div class="controls">
+  <label>
+    <span>Dot color:</span>
+    <input type="color" id="colorPicker" value="#ff0000" />
+  </label>
+  <button id="addDotBtn">Add Dot</button>
+  <button id="sortBtn">Sort By Color</button>
+</div>
 
-  <script>
-    const display = document.getElementById("display");
-    const addDotBtn = document.getElementById("addDotBtn");
-    const sortBtn = document.getElementById("sortBtn");
-    const colorPicker = document.getElementById("colorPicker");
-    const status = document.getElementById("status");
+<div id="display"></div>
+<div class="status" id="status">Click dots to recolor them. Drag them around. Press Sort.</div>
 
-    let isSorting = false;
+<script>
+const display = document.getElementById("display");
+const addDotBtn = document.getElementById("addDotBtn");
+const sortBtn = document.getElementById("sortBtn");
+const colorPicker = document.getElementById("colorPicker");
+const status = document.getElementById("status");
 
-    // Utility: get random position inside display
-    function getRandomPosition() {
-      const rect = display.getBoundingClientRect();
-      const dotSize = 18;
-      const x = Math.random() * (rect.width - dotSize);
-      const y = Math.random() * (rect.height - dotSize);
-      return { x, y };
-    }
+let isSorting = false;
 
-    // Create a dot element
-    function createDot(color) {
-      const dot = document.createElement("div");
-      dot.className = "dot";
-      dot.style.backgroundColor = color;
+// Random position inside display
+function getRandomPosition() {
+  const rect = display.getBoundingClientRect();
+  const size = 20;
+  return {
+    x: Math.random() * (rect.width - size),
+    y: Math.random() * (rect.height - size)
+  };
+}
 
-      const pos = getRandomPosition();
-      setDotPosition(dot, pos.x, pos.y);
+// Create dot
+function createDot(color) {
+  const dot = document.createElement("div");
+  dot.className = "dot";
+  dot.style.backgroundColor = color;
 
-      // Store logical position in dataset
-      dot.dataset.x = pos.x;
-      dot.dataset.y = pos.y;
+  const pos = getRandomPosition();
+  setDotPosition(dot, pos.x, pos.y);
 
-      enableDrag(dot);
-      display.appendChild(dot);
-    }
+  dot.dataset.x = pos.x;
+  dot.dataset.y = pos.y;
+  dot.dataset.color = color;
 
-    // Set dot position (both style and dataset)
-    function setDotPosition(dot, x, y) {
-      dot.style.left = x + "px";
-      dot.style.top = y + "px";
-      dot.dataset.x = x;
-      dot.dataset.y = y;
-    }
+  enableDrag(dot);
+  enableColorEdit(dot);
 
-    // Drag-and-drop behavior
-    function enableDrag(dot) {
-      let isDragging = false;
-      let offsetX = 0;
-      let offsetY = 0;
+  display.appendChild(dot);
+}
 
-      dot.addEventListener("mousedown", (e) => {
-        if (isSorting) return; // disable drag while sorting
-        isDragging = true;
-        dot.style.cursor = "grabbing";
+// Set dot position
+function setDotPosition(dot, x, y) {
+  dot.style.left = x + "px";
+  dot.style.top = y + "px";
+  dot.dataset.x = x;
+  dot.dataset.y = y;
+}
 
-        const rect = dot.getBoundingClientRect();
-        offsetX = e.clientX - rect.left;
-        offsetY = e.clientY - rect.top;
+// Drag-and-drop
+function enableDrag(dot) {
+  let dragging = false;
+  let offsetX = 0;
+  let offsetY = 0;
 
-        document.addEventListener("mousemove", onMouseMove);
-        document.addEventListener("mouseup", onMouseUp);
-      });
+  dot.addEventListener("mousedown", (e) => {
+    if (isSorting) return;
+    dragging = true;
+    dot.style.cursor = "grabbing";
 
-      function onMouseMove(e) {
-        if (!isDragging) return;
+    const rect = dot.getBoundingClientRect();
+    offsetX = e.clientX - rect.left;
+    offsetY = e.clientY - rect.top;
 
-        const displayRect = display.getBoundingClientRect();
-        const dotSize = 18;
+    document.addEventListener("mousemove", move);
+    document.addEventListener("mouseup", stop);
+  });
 
-        let x = e.clientX - displayRect.left - offsetX;
-        let y = e.clientY - displayRect.top - offsetY;
+  function move(e) {
+    if (!dragging) return;
 
-        // Clamp to display bounds
-        x = Math.max(0, Math.min(displayRect.width - dotSize, x));
-        y = Math.max(0, Math.min(displayRect.height - dotSize, y));
+    const rect = display.getBoundingClientRect();
+    const size = 20;
 
-        setDotPosition(dot, x, y);
-      }
+    let x = e.clientX - rect.left - offsetX;
+    let y = e.clientY - rect.top - offsetY;
 
-      function onMouseUp() {
-        if (!isDragging) return;
-        isDragging = false;
-        dot.style.cursor = "grab";
-        document.removeEventListener("mousemove", onMouseMove);
-        document.removeEventListener("mouseup", onMouseUp);
-      }
-    }
+    x = Math.max(0, Math.min(rect.width - size, x));
+    y = Math.max(0, Math.min(rect.height - size, y));
 
-    // Bubble sort visualization by X coordinate
-    function sortDotsVisual() {
-      const dots = Array.from(display.querySelectorAll(".dot"));
-      if (dots.length < 2) {
-        status.textContent = "Need at least 2 dots to sort.";
-        return;
-      }
+    setDotPosition(dot, x, y);
+  }
 
-      isSorting = true;
-      addDotBtn.disabled = true;
-      sortBtn.disabled = true;
-      status.textContent = "Sorting in progress...";
+  function stop() {
+    dragging = false;
+    dot.style.cursor = "grab";
+    document.removeEventListener("mousemove", move);
+    document.removeEventListener("mouseup", stop);
+  }
+}
 
-      // We’ll sort by dataset.x
-      let i = 0;
-      let j = 0;
+// Allow recoloring dots
+function enableColorEdit(dot) {
+  dot.addEventListener("click", (e) => {
+    if (isSorting) return;
 
-      const interval = setInterval(() => {
-        if (i >= dots.length - 1) {
-          clearInterval(interval);
-          isSorting = false;
-          addDotBtn.disabled = false;
-          sortBtn.disabled = false;
-          status.textContent = "Sorting complete. You can drag dots or add more.";
-          return;
-        }
+    const picker = document.createElement("input");
+    picker.type = "color";
+    picker.className = "dot-color-picker";
 
-        const dotA = dots[j];
-        const dotB = dots[j + 1];
+    picker.style.left = e.clientX + "px";
+    picker.style.top = e.clientY + "px";
+    picker.value = dot.dataset.color;
 
-        const xA = parseFloat(dotA.dataset.x);
-        const xB = parseFloat(dotB.dataset.x);
+    document.body.appendChild(picker);
+    picker.click();
 
-        // If out of order, swap positions
-        if (xA > xB) {
-          // Swap in array
-          dots[j] = dotB;
-          dots[j + 1] = dotA;
-
-          // Swap positions visually
-          setDotPosition(dotA, xB, parseFloat(dotA.dataset.y));
-          setDotPosition(dotB, xA, parseFloat(dotB.dataset.y));
-        }
-
-        j++;
-        if (j >= dots.length - 1 - i) {
-          j = 0;
-          i++;
-        }
-      }, 120); // adjust speed here
-    }
-
-    // Event listeners
-    addDotBtn.addEventListener("click", () => {
-      const color = colorPicker.value || "#ff0000";
-      createDot(color);
-      status.textContent = "Dot added. Drag it or add more, then press 'Sort Dots'.";
+    picker.addEventListener("input", () => {
+      dot.style.backgroundColor = picker.value;
+      dot.dataset.color = picker.value;
     });
 
-    sortBtn.addEventListener("click", () => {
-      if (isSorting) return;
-      sortDotsVisual();
-    });
-  </script>
+    picker.addEventListener("blur", () => picker.remove());
+  });
+}
+
+// Sort dots by color groups
+function sortDotsByColor() {
+  const dots = Array.from(display.querySelectorAll(".dot"));
+  if (dots.length < 2) {
+    status.textContent = "Need at least 2 dots.";
+    return;
+  }
+
+  isSorting = true;
+  addDotBtn.disabled = true;
+  sortBtn.disabled = true;
+  status.textContent = "Sorting by color...";
+
+  // Group dots by color
+  const groups = {};
+  dots.forEach(dot => {
+    const c = dot.dataset.color;
+    if (!groups[c]) groups[c] = [];
+    groups[c].push(dot);
+  });
+
+  // Flatten groups in consistent order
+  const sorted = Object.keys(groups).sort().flatMap(color => groups[color]);
+
+  // Animate sorting by assigning new X positions
+  let index = 0;
+  const spacing = 30;
+
+  const interval = setInterval(() => {
+    if (index >= sorted.length) {
+      clearInterval(interval);
+      isSorting = false;
+      addDotBtn.disabled = false;
+      sortBtn.disabled = false;
+      status.textContent = "Sorting complete.";
+      return;
+    }
+
+    const dot = sorted[index];
+    const newX = index * spacing;
+    const newY = parseFloat(dot.dataset.y);
+
+    setDotPosition(dot, newX, newY);
+
+    index++;
+  }, 120);
+}
+
+// Events
+addDotBtn.addEventListener("click", () => {
+  createDot(colorPicker.value);
+});
+
+sortBtn.addEventListener("click", () => {
+  if (!isSorting) sortDotsByColor();
+});
+</script>
+
 </body>
 </html>

@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8" />
-<title>Bar Sorting Mode Only</title>
+<title>Brightness Sorting Bars</title>
 <style>
   body {
     font-family: system-ui, sans-serif;
@@ -55,7 +55,7 @@
     position: absolute;
     bottom: 0;
     width: 20px;
-    transition: left 0.2s, height 0.2s, background-color 0.2s;
+    transition: left 0.15s, height 0.15s, outline 0.1s;
   }
 </style>
 </head>
@@ -121,19 +121,20 @@ barGenerateBtn.addEventListener("click", () => {
 
   const count = Math.floor(rect.width / barSpacing);
 
-  let usedHeights = new Set();
+  let usedBrightness = new Set();
 
   for (let i = 0; i < count; i++) {
 
-    let height;
+    let color, brightness;
+
     do {
-      height = Math.floor(Math.random() * (rect.height - 50)) + 30;
-    } while (usedHeights.has(height));
+      color = randomColor();
+      brightness = getBrightness(color);
+    } while (usedBrightness.has(brightness));
 
-    usedHeights.add(height);
+    usedBrightness.add(brightness);
 
-    const color = randomColor();
-    const brightness = getBrightness(color);
+    const height = Math.floor(Math.random() * (rect.height - 50)) + 30;
 
     const bar = document.createElement("div");
     bar.className = "bar";
@@ -141,7 +142,6 @@ barGenerateBtn.addEventListener("click", () => {
     bar.style.left = (i * barSpacing) + "px";
     bar.style.backgroundColor = color;
 
-    bar.dataset.height = height;
     bar.dataset.brightness = brightness;
 
     display.appendChild(bar);
@@ -170,7 +170,7 @@ function startBarSort() {
 
   barSortInterval = setInterval(() => {
 
-    bars.forEach(b => b.style.backgroundColor = b.dataset.originalColor || b.style.backgroundColor);
+    bars.forEach(b => b.style.outline = "none");
 
     if (i >= bars.length - 1) {
       clearInterval(barSortInterval);
@@ -180,17 +180,12 @@ function startBarSort() {
     const barA = bars[j];
     const barB = bars[j + 1];
 
-    barA.style.backgroundColor = "#ff4444";
-
-    const heightA = parseInt(barA.dataset.height);
-    const heightB = parseInt(barB.dataset.height);
+    barA.style.outline = "3px solid #00ff00";
 
     const brightA = parseFloat(barA.dataset.brightness);
     const brightB = parseFloat(barB.dataset.brightness);
 
-    const shouldSwap =
-      heightA > heightB ||
-      (heightA === heightB && brightA > brightB);
+    const shouldSwap = brightA > brightB;
 
     if (shouldSwap) {
       const tempLeft = barA.style.left;

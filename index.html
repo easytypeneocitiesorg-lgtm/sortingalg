@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8" />
-<title>Color Physics Dots</title>
+<title>Color Physics Dots – Chunk Clustering</title>
 <style>
   body {
     font-family: system-ui, sans-serif;
@@ -46,29 +46,29 @@
     font-size: 14px;
   }
 
+  .controls {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 15px;
+  }
+
   input[type="color"] {
     width: 40px;
     height: 24px;
     border: none;
     background: transparent;
   }
-
-  .controls {
-    display: flex;
-    gap: 10px;
-    margin-bottom: 15px;
-  }
 </style>
 </head>
 <body>
 
-<h1>Color Physics Dots</h1>
+<h1>Color Physics Dots – Chunk Clustering</h1>
 
 <div class="controls">
   <input type="color" id="colorPicker" value="#ff0000" />
   <button id="addDotBtn">Add Dot</button>
   <button id="autoBtn">Auto‑Generate</button>
-  <button id="sortBtn">Color Physics Sort</button>
+  <button id="sortBtn">Chunk Sort</button>
   <button id="stopBtn">Force Stop</button>
 </div>
 
@@ -218,7 +218,22 @@ stopBtn.addEventListener("click", () => {
   sortBtn.disabled = false;
 });
 
-// Physics sort with collisions + auto-stop
+// Chunk zones (gravity wells)
+function getColorZone(color) {
+  const rect = display.getBoundingClientRect();
+  const zones = [
+    { x: rect.width * 0.25, y: rect.height * 0.25 },
+    { x: rect.width * 0.75, y: rect.height * 0.25 },
+    { x: rect.width * 0.25, y: rect.height * 0.75 },
+    { x: rect.width * 0.75, y: rect.height * 0.75 }
+  ];
+
+  // Map colors to zones deterministically
+  const index = Math.abs(color.hashCode || [...color].reduce((a,c)=>a+c.charCodeAt(0),0)) % zones.length;
+  return zones[index];
+}
+
+// Physics sort with chunking + collisions + auto-stop
 function startColorPhysicsSort() {
   const dots = Array.from(display.querySelectorAll(".dot"));
   if (dots.length < 2) return;
@@ -233,7 +248,7 @@ function startColorPhysicsSort() {
   if (sortInterval) clearInterval(sortInterval);
 
   sortInterval = setInterval(() => {
-    let movement = 0;
+    let totalVelocity = 0;
 
     for (let i = 0; i < dots.length; i++) {
       const A = dots[i];
@@ -246,6 +261,13 @@ function startColorPhysicsSort() {
 
       let fx = 0;
       let fy = 0;
+
+      // Gravity well (chunk zone)
+      const zone = getColorZone(colorA);
+      let zx = zone.x - ax;
+      let zy = zone.y - ay;
+      fx += zx * 0.002;
+      fy += zy * 0.002;
 
       for (let j = 0; j < dots.length; j++) {
         if (i === j) continue;
@@ -263,7 +285,11 @@ function startColorPhysicsSort() {
         const ndy = dy / dist;
 
         const cd = colorDistance(colorA, colorB);
+
+        // Similar hues attract strongly
         const attract = (1 - cd) * (1 / dist);
+
+        // Opposites repel strongly at short range, weak at long range
         const repel = cd * (1 / (dist * dist));
 
         fx += ndx * (attract - repel);
@@ -274,11 +300,11 @@ function startColorPhysicsSort() {
         if (dist < minDist) {
           const overlap = minDist - dist;
 
-          fx -= ndx * overlap * 0.2;
-          fy -= ndy * overlap * 0.2;
+          fx -= ndx * overlap * 0.4;
+          fy -= ndy * overlap * 0.4;
 
-          vx -= ndx * overlap * 0.1;
-          vy -= ndy * overlap * 0.1;
+          vx -= ndx * overlap * 0.2;
+          vy -= ndy * overlap * 0.2;
         }
       }
 
@@ -294,7 +320,7 @@ function startColorPhysicsSort() {
       newX = Math.max(0, Math.min(rect.width - 20, newX));
       newY = Math.max(0, Math.min(rect.height - 20, newY));
 
-      movement += Math.abs(newX - ax) + Math.abs(newY - ay);
+      totalVelocity += Math.abs(vx) + Math.abs(vy);
 
       A.dataset.vx = vx;
       A.dataset.vy = vy;
@@ -302,8 +328,8 @@ function startColorPhysicsSort() {
       setDotPosition(A, newX, newY);
     }
 
-    // Auto-stop when stable
-    if (movement < 0.3) {
+    // Auto-stop when velocity is basically zero
+    if (totalVelocity < 0.1) {
       clearInterval(sortInterval);
       isSorting = false;
       addDotBtn.disabled = false;

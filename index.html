@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8" />
-<title>Dot & Bar Sorting Modes</title>
+<title>Bar Sorting Mode Only</title>
 <style>
   body {
     font-family: system-ui, sans-serif;
@@ -17,13 +17,12 @@
     height: 50px;
     background: #222;
     display: flex;
-    justify-content: flex-end;
+    justify-content: center;
     align-items: center;
-    padding-right: 20px;
     box-shadow: 0 0 10px #000;
   }
 
-  #modeBtn {
+  #topBar button {
     background: #3b82f6;
     color: white;
     border: none;
@@ -31,6 +30,7 @@
     border-radius: 6px;
     cursor: pointer;
     font-size: 14px;
+    margin: 0 10px;
   }
 
   #container {
@@ -51,139 +51,40 @@
     margin-bottom: 15px;
   }
 
-  .dot {
-    position: absolute;
-    width: 22px;
-    height: 22px;
-    border-radius: 50%;
-    cursor: grab;
-    border: 1px solid #00000055;
-    box-shadow: 0 0 4px #000000aa;
-    transition: background-color 0.2s;
-  }
-
   .bar {
     position: absolute;
-    background: #3b82f6;
     bottom: 0;
     width: 20px;
     transition: left 0.2s, height 0.2s, background-color 0.2s;
-  }
-
-  .controls {
-    display: flex;
-    gap: 10px;
-    margin-bottom: 15px;
-  }
-
-  button {
-    padding: 6px 12px;
-    border-radius: 4px;
-    border: none;
-    cursor: pointer;
-    background: #3b82f6;
-    color: white;
-    font-size: 14px;
-  }
-
-  input[type="color"] {
-    width: 40px;
-    height: 24px;
-    border: none;
-    background: transparent;
   }
 </style>
 </head>
 <body>
 
 <div id="topBar">
-  <button id="modeBtn">Switch to Bar Mode</button>
+  <button id="barGenerateBtn">Random Generate</button>
+  <button id="barSortBtn">Sort Bars</button>
+  <button id="barStopBtn">Force Stop</button>
 </div>
 
 <div id="container">
-
-  <!-- DOT MODE CONTROLS -->
-  <div id="dotControls" class="controls">
-    <input type="color" id="colorPicker" value="#ff0000" />
-    <button id="addDotBtn">Add Dot</button>
-    <button id="autoBtn">Auto‑Generate</button>
-    <button id="testBtn">Test Dots</button>
-    <button id="sortBtn">Smart Hue Sort</button>
-    <button id="stopBtn">Force Stop</button>
-    <button id="deleteBtn">Delete All</button>
-  </div>
-
-  <!-- BAR MODE CONTROLS -->
-  <div id="barControls" class="controls" style="display:none;">
-    <button id="barGenerateBtn">Random Generate</button>
-    <button id="barSortBtn">Sort Bars</button>
-    <button id="barStopBtn">Force Stop</button>
-    <button id="barBackBtn">Back to Dots</button>
-  </div>
-
   <div id="display"></div>
-
 </div>
 
 <script>
 /* ---------------------------------------------------------
-   MODE SWITCHING
+   BAR MODE ONLY
 --------------------------------------------------------- */
 
-let mode = "dots";
-
-const modeBtn = document.getElementById("modeBtn");
-const dotControls = document.getElementById("dotControls");
-const barControls = document.getElementById("barControls");
-const display = document.getElementById("display");
-
-modeBtn.addEventListener("click", () => {
-  if (mode === "dots") switchToBars();
-  else switchToDots();
-});
-
-function switchToBars() {
-  mode = "bars";
-  modeBtn.textContent = "Switch to Dot Mode";
-  dotControls.style.display = "none";
-  barControls.style.display = "flex";
-  clearDots();
-}
-
-function switchToDots() {
-  mode = "dots";
-  modeBtn.textContent = "Switch to Bar Mode";
-  dotControls.style.display = "flex";
-  barControls.style.display = "none";
-  clearBars();
-}
-
-/* ---------------------------------------------------------
-   DOT MODE (unchanged)
---------------------------------------------------------- */
-
-let isSorting = false;
-let sortInterval = null;
-
-function clearDots() {
-  display.innerHTML = "";
-  isSorting = false;
-  if (sortInterval) clearInterval(sortInterval);
-}
-
-function unlockUI() {
-  addDotBtn.disabled = false;
-  autoBtn.disabled = false;
-  sortBtn.disabled = false;
-  testBtn.disabled = false;
-}
-
-/* ---------------------------------------------------------
-   BAR MODE
---------------------------------------------------------- */
-
-let barSortInterval = null;
 let bars = [];
+let barSortInterval = null;
+
+const display = document.getElementById("display");
+const barGenerateBtn = document.getElementById("barGenerateBtn");
+const barSortBtn = document.getElementById("barSortBtn");
+const barStopBtn = document.getElementById("barStopBtn");
+
+/* ---------------- CLEAR BARS ---------------- */
 
 function clearBars() {
   display.innerHTML = "";
@@ -191,9 +92,24 @@ function clearBars() {
   if (barSortInterval) clearInterval(barSortInterval);
 }
 
-/* ---------------- RANDOM BAR GENERATION ---------------- */
+/* ---------------- RANDOM COLOR ---------------- */
 
-const barGenerateBtn = document.getElementById("barGenerateBtn");
+function randomColor() {
+  const r = Math.floor(Math.random() * 256);
+  const g = Math.floor(Math.random() * 256);
+  const b = Math.floor(Math.random() * 256);
+  return `rgb(${r},${g},${b})`;
+}
+
+/* ---------------- BRIGHTNESS ---------------- */
+
+function getBrightness(rgbString) {
+  const nums = rgbString.match(/\d+/g).map(Number);
+  const [r, g, b] = nums;
+  return 0.2126*r + 0.7152*g + 0.0722*b;
+}
+
+/* ---------------- RANDOM BAR GENERATION ---------------- */
 
 barGenerateBtn.addEventListener("click", () => {
   clearBars();
@@ -208,6 +124,7 @@ barGenerateBtn.addEventListener("click", () => {
   let usedHeights = new Set();
 
   for (let i = 0; i < count; i++) {
+
     let height;
     do {
       height = Math.floor(Math.random() * (rect.height - 50)) + 30;
@@ -215,23 +132,24 @@ barGenerateBtn.addEventListener("click", () => {
 
     usedHeights.add(height);
 
+    const color = randomColor();
+    const brightness = getBrightness(color);
+
     const bar = document.createElement("div");
     bar.className = "bar";
     bar.style.height = height + "px";
     bar.style.left = (i * barSpacing) + "px";
+    bar.style.backgroundColor = color;
 
     bar.dataset.height = height;
+    bar.dataset.brightness = brightness;
 
     display.appendChild(bar);
     bars.push(bar);
   }
 });
 
-/* ---------------- BAR SORTING ---------------- */
-
-const barSortBtn = document.getElementById("barSortBtn");
-const barStopBtn = document.getElementById("barStopBtn");
-const barBackBtn = document.getElementById("barBackBtn");
+/* ---------------- SORTING ---------------- */
 
 barSortBtn.addEventListener("click", () => {
   if (bars.length === 0) return;
@@ -240,10 +158,6 @@ barSortBtn.addEventListener("click", () => {
 
 barStopBtn.addEventListener("click", () => {
   if (barSortInterval) clearInterval(barSortInterval);
-});
-
-barBackBtn.addEventListener("click", () => {
-  switchToDots();
 });
 
 /* ---------------- SORTING ALGORITHM ---------------- */
@@ -256,7 +170,7 @@ function startBarSort() {
 
   barSortInterval = setInterval(() => {
 
-    bars.forEach(b => b.style.backgroundColor = "#3b82f6");
+    bars.forEach(b => b.style.backgroundColor = b.dataset.originalColor || b.style.backgroundColor);
 
     if (i >= bars.length - 1) {
       clearInterval(barSortInterval);
@@ -268,7 +182,17 @@ function startBarSort() {
 
     barA.style.backgroundColor = "#ff4444";
 
-    if (parseInt(barA.dataset.height) > parseInt(barB.dataset.height)) {
+    const heightA = parseInt(barA.dataset.height);
+    const heightB = parseInt(barB.dataset.height);
+
+    const brightA = parseFloat(barA.dataset.brightness);
+    const brightB = parseFloat(barB.dataset.brightness);
+
+    const shouldSwap =
+      heightA > heightB ||
+      (heightA === heightB && brightA > brightB);
+
+    if (shouldSwap) {
       const tempLeft = barA.style.left;
       barA.style.left = barB.style.left;
       barB.style.left = tempLeft;

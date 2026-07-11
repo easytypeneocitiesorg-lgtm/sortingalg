@@ -55,7 +55,7 @@
     position: absolute;
     bottom: 0;
     width: 20px;
-    transition: left 0.05s, height 0.05s, outline 0.05s;
+    transition: left 0.05s, height 0.05s, background-color 0.05s;
   }
 </style>
 </head>
@@ -86,11 +86,9 @@ function clearBars() {
   if (barSortInterval) clearInterval(barSortInterval);
 }
 
-function randomColor() {
-  const r = Math.floor(Math.random() * 256);
-  const g = Math.floor(Math.random() * 256);
-  const b = Math.floor(Math.random() * 256);
-  return `rgb(${r},${g},${b})`;
+function randomGray() {
+  const v = Math.floor(Math.random() * 200) + 30;
+  return `rgb(${v},${v},${v})`;
 }
 
 barGenerateBtn.addEventListener("click", () => {
@@ -120,7 +118,10 @@ barGenerateBtn.addEventListener("click", () => {
     bar.style.width = barWidth + "px";
     bar.style.height = height + "px";
     bar.style.left = (i * barSpacing) + "px";
-    bar.style.backgroundColor = randomColor();
+
+    const color = randomGray();
+    bar.style.backgroundColor = color;
+    bar.dataset.originalColor = color;
 
     bar.dataset.height = height;
 
@@ -146,7 +147,8 @@ function startHeightSort() {
 
   barSortInterval = setInterval(() => {
 
-    bars.forEach(b => b.style.outline = "none");
+    // Reset all bars to original color
+    bars.forEach(b => b.style.backgroundColor = b.dataset.originalColor);
 
     if (i >= bars.length - 1) {
       clearInterval(barSortInterval);
@@ -156,7 +158,8 @@ function startHeightSort() {
     const barA = bars[j];
     const barB = bars[j + 1];
 
-    barA.style.outline = "3px solid white";
+    // Highlight = turn bar red
+    barA.style.backgroundColor = "red";
 
     const heightA = parseInt(barA.dataset.height);
     const heightB = parseInt(barB.dataset.height);

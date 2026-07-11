@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8" />
-<title>Brightness Sorting Bars</title>
+<title>Brightness + Size Sorting Bars</title>
 <style>
   body {
     font-family: system-ui, sans-serif;
@@ -101,6 +101,14 @@ function randomColor() {
   return `rgb(${r},${g},${b})`;
 }
 
+/* ---------------- INVERT COLOR ---------------- */
+
+function invertColor(rgbString) {
+  const nums = rgbString.match(/\d+/g).map(Number);
+  const [r, g, b] = nums;
+  return `rgb(${255-r}, ${255-g}, ${255-b})`;
+}
+
 /* ---------------- BRIGHTNESS ---------------- */
 
 function getBrightness(rgbString) {
@@ -143,6 +151,7 @@ barGenerateBtn.addEventListener("click", () => {
     bar.style.backgroundColor = color;
 
     bar.dataset.brightness = brightness;
+    bar.dataset.height = height;
 
     display.appendChild(bar);
     bars.push(bar);
@@ -153,16 +162,68 @@ barGenerateBtn.addEventListener("click", () => {
 
 barSortBtn.addEventListener("click", () => {
   if (bars.length === 0) return;
-  startBarSort();
+  startBrightnessSort();
 });
 
 barStopBtn.addEventListener("click", () => {
   if (barSortInterval) clearInterval(barSortInterval);
 });
 
-/* ---------------- SORTING ALGORITHM ---------------- */
+/* ---------------------------------------------------------
+   PHASE 1 — SORT BY BRIGHTNESS
+--------------------------------------------------------- */
 
-function startBarSort() {
+function startBrightnessSort() {
+  let i = 0;
+  let j = 0;
+
+  if (barSortInterval) clearInterval(barSortInterval);
+
+  barSortInterval = setInterval(() => {
+
+    bars.forEach(b => b.style.outline = "none");
+
+    if (i >= bars.length - 1) {
+      clearInterval(barSortInterval);
+      startSizeSort();
+      return;
+    }
+
+    const barA = bars[j];
+    const barB = bars[j + 1];
+
+    const inverted = invertColor(barA.style.backgroundColor);
+    barA.style.outline = `3px solid ${inverted}`;
+
+    const brightA = parseFloat(barA.dataset.brightness);
+    const brightB = parseFloat(barB.dataset.brightness);
+
+    const shouldSwap = brightA > brightB;
+
+    if (shouldSwap) {
+      const tempLeft = barA.style.left;
+      barA.style.left = barB.style.left;
+      barB.style.left = tempLeft;
+
+      bars[j] = barB;
+      bars[j + 1] = barA;
+    }
+
+    j++;
+
+    if (j >= bars.length - 1) {
+      j = 0;
+      i++;
+    }
+
+  }, 100);
+}
+
+/* ---------------------------------------------------------
+   PHASE 2 — SORT BY SIZE
+--------------------------------------------------------- */
+
+function startSizeSort() {
   let i = 0;
   let j = 0;
 
@@ -180,12 +241,13 @@ function startBarSort() {
     const barA = bars[j];
     const barB = bars[j + 1];
 
-    barA.style.outline = "3px solid #00ff00";
+    const inverted = invertColor(barA.style.backgroundColor);
+    barA.style.outline = `3px solid ${inverted}`;
 
-    const brightA = parseFloat(barA.dataset.brightness);
-    const brightB = parseFloat(barB.dataset.brightness);
+    const heightA = parseInt(barA.dataset.height);
+    const heightB = parseInt(barB.dataset.height);
 
-    const shouldSwap = brightA > brightB;
+    const shouldSwap = heightA > heightB;
 
     if (shouldSwap) {
       const tempLeft = barA.style.left;

@@ -69,6 +69,7 @@
   <button id="addDotBtn">Add Dot</button>
   <button id="autoBtn">Auto‑Generate</button>
   <button id="sortBtn">Color Physics Sort</button>
+  <button id="stopBtn">Force Stop</button>
 </div>
 
 <div id="display"></div>
@@ -78,6 +79,7 @@ const display = document.getElementById("display");
 const addDotBtn = document.getElementById("addDotBtn");
 const autoBtn = document.getElementById("autoBtn");
 const sortBtn = document.getElementById("sortBtn");
+const stopBtn = document.getElementById("stopBtn");
 const colorPicker = document.getElementById("colorPicker");
 
 let isSorting = false;
@@ -207,7 +209,16 @@ function colorDistance(c1, c2) {
   return Math.sqrt(dr*dr + dg*dg + db*db) / 441.67;
 }
 
-// Physics sort with collisions
+// Force stop
+stopBtn.addEventListener("click", () => {
+  if (sortInterval) clearInterval(sortInterval);
+  isSorting = false;
+  addDotBtn.disabled = false;
+  autoBtn.disabled = false;
+  sortBtn.disabled = false;
+});
+
+// Physics sort with collisions + auto-stop
 function startColorPhysicsSort() {
   const dots = Array.from(display.querySelectorAll(".dot"));
   if (dots.length < 2) return;
@@ -291,6 +302,7 @@ function startColorPhysicsSort() {
       setDotPosition(A, newX, newY);
     }
 
+    // Auto-stop when stable
     if (movement < 0.3) {
       clearInterval(sortInterval);
       isSorting = false;

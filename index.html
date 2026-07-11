@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8" />
-<title>Brightness + Size Sorting Bars</title>
+<title>Fast Height Sorting Bars</title>
 <style>
   body {
     font-family: system-ui, sans-serif;
@@ -101,21 +101,6 @@ function randomColor() {
   return `rgb(${r},${g},${b})`;
 }
 
-/* ---------------- BRIGHTNESS ---------------- */
-
-function getBrightness(rgbString) {
-  const nums = rgbString.match(/\d+/g).map(Number);
-  const [r, g, b] = nums;
-  return 0.2126*r + 0.7152*g + 0.0722*b;
-}
-
-/* ---------------- HIGH CONTRAST OUTLINE ---------------- */
-
-function highContrastOutline(rgbString) {
-  const brightness = getBrightness(rgbString);
-  return brightness < 128 ? "white" : "black";
-}
-
 /* ---------------- RANDOM BAR GENERATION ---------------- */
 
 barGenerateBtn.addEventListener("click", () => {
@@ -128,28 +113,23 @@ barGenerateBtn.addEventListener("click", () => {
 
   const count = Math.floor(rect.width / barSpacing);
 
-  let usedBrightness = new Set();
+  let usedHeights = new Set();
 
   for (let i = 0; i < count; i++) {
 
-    let color, brightness;
-
+    let height;
     do {
-      color = randomColor();
-      brightness = getBrightness(color);
-    } while (usedBrightness.has(brightness));
+      height = Math.floor(Math.random() * (rect.height - 50)) + 30;
+    } while (usedHeights.has(height));
 
-    usedBrightness.add(brightness);
-
-    const height = Math.floor(Math.random() * (rect.height - 50)) + 30;
+    usedHeights.add(height);
 
     const bar = document.createElement("div");
     bar.className = "bar";
     bar.style.height = height + "px";
     bar.style.left = (i * barSpacing) + "px";
-    bar.style.backgroundColor = color;
+    bar.style.backgroundColor = randomColor();
 
-    bar.dataset.brightness = brightness;
     bar.dataset.height = height;
 
     display.appendChild(bar);
@@ -161,7 +141,7 @@ barGenerateBtn.addEventListener("click", () => {
 
 barSortBtn.addEventListener("click", () => {
   if (bars.length === 0) return;
-  startBrightnessSort();
+  startHeightSort();
 });
 
 barStopBtn.addEventListener("click", () => {
@@ -169,60 +149,10 @@ barStopBtn.addEventListener("click", () => {
 });
 
 /* ---------------------------------------------------------
-   PHASE 1 — SORT BY BRIGHTNESS
+   SORT BY HEIGHT ONLY (FAST)
 --------------------------------------------------------- */
 
-function startBrightnessSort() {
-  let i = 0;
-  let j = 0;
-
-  if (barSortInterval) clearInterval(barSortInterval);
-
-  barSortInterval = setInterval(() => {
-
-    bars.forEach(b => b.style.outline = "none");
-
-    if (i >= bars.length - 1) {
-      clearInterval(barSortInterval);
-      startSizeSort();
-      return;
-    }
-
-    const barA = bars[j];
-    const barB = bars[j + 1];
-
-    const outlineColor = highContrastOutline(barA.style.backgroundColor);
-    barA.style.outline = `3px solid ${outlineColor}`;
-
-    const brightA = parseFloat(barA.dataset.brightness);
-    const brightB = parseFloat(barB.dataset.brightness);
-
-    const shouldSwap = brightA > brightB;
-
-    if (shouldSwap) {
-      const tempLeft = barA.style.left;
-      barA.style.left = barB.style.left;
-      barB.style.left = tempLeft;
-
-      bars[j] = barB;
-      bars[j + 1] = barA;
-    }
-
-    j++;
-
-    if (j >= bars.length - 1) {
-      j = 0;
-      i++;
-    }
-
-  }, 10); // WAY FASTER
-}
-
-/* ---------------------------------------------------------
-   PHASE 2 — SORT BY SIZE
---------------------------------------------------------- */
-
-function startSizeSort() {
+function startHeightSort() {
   let i = 0;
   let j = 0;
 
@@ -240,8 +170,7 @@ function startSizeSort() {
     const barA = bars[j];
     const barB = bars[j + 1];
 
-    const outlineColor = highContrastOutline(barA.style.backgroundColor);
-    barA.style.outline = `3px solid ${outlineColor}`;
+    barA.style.outline = "3px solid white";
 
     const heightA = parseInt(barA.dataset.height);
     const heightB = parseInt(barB.dataset.height);
@@ -264,7 +193,7 @@ function startSizeSort() {
       i++;
     }
 
-  }, 10); // WAY FASTER
+  }, 10); // FAST SPEED
 }
 
 </script>

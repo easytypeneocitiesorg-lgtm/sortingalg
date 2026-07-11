@@ -105,6 +105,25 @@ function hexToHue(hex) {
   return h;
 }
 
+// Convert hex → RGB
+function hexToRgb(hex) {
+  hex = hex.replace("#", "");
+  return {
+    r: parseInt(hex.substring(0,2),16),
+    g: parseInt(hex.substring(2,4),16),
+    b: parseInt(hex.substring(4,6),16)
+  };
+}
+
+// Detect grayscale (black/white/gray)
+function isGrayscale(hex) {
+  const rgb = hexToRgb(hex);
+  const max = Math.max(rgb.r, rgb.g, rgb.b);
+  const min = Math.min(rgb.r, rgb.g, rgb.b);
+  const sat = (max - min) / (max || 1);
+  return sat < 0.08; // grayscale threshold
+}
+
 // Random position
 function getRandomPosition() {
   const rect = display.getBoundingClientRect();
@@ -257,17 +276,30 @@ function startSmartHueSort() {
       let vx = parseFloat(A.dataset.vx);
       let vy = parseFloat(A.dataset.vy);
       const hueA = parseFloat(A.dataset.hue);
+      const colorA = A.dataset.color;
 
       let fx = 0;
       let fy = 0;
 
       // Smooth gradient zone target
-      const targetX = (hueA / 360) * rect.width;
+      let targetX;
+
+      if (isGrayscale(colorA)) {
+        targetX = rect.width / 2; // grayscale → center
+      } else {
+        targetX = (hueA / 360) * rect.width; // hue → horizontal rainbow
+      }
+
       fx += (targetX - ax) * 0.004;
 
       // Vertical centering
-      fy += ((rect.height / 2) - ay) * 0.002;
+      if (isGrayscale(colorA)) {
+        fy += ((rect.height / 2) - ay) * 0.004;
+      } else {
+        fy += ((rect.height / 2) - ay) * 0.002;
+      }
 
+      // Collision + smart steering
       for (let j = 0; j < dots.length; j++) {
         if (i === j) continue;
 
@@ -282,7 +314,6 @@ function startSmartHueSort() {
         const ndx = dx / dist;
         const ndy = dy / dist;
 
-        // Collision avoidance
         const minDist = 22;
         if (dist < minDist) {
           const overlap = minDist - dist;

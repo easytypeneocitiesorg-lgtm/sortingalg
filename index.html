@@ -207,7 +207,7 @@ function colorDistance(c1, c2) {
   return Math.sqrt(dr*dr + dg*dg + db*db) / 441.67;
 }
 
-// Physics sort
+// Physics sort with collisions
 function startColorPhysicsSort() {
   const dots = Array.from(display.querySelectorAll(".dot"));
   if (dots.length < 2) return;
@@ -248,16 +248,27 @@ function startColorPhysicsSort() {
         let dy = by - ay;
         let dist = Math.sqrt(dx*dx + dy*dy) || 0.001;
 
-        dx /= dist;
-        dy /= dist;
+        const ndx = dx / dist;
+        const ndy = dy / dist;
 
         const cd = colorDistance(colorA, colorB);
-
         const attract = (1 - cd) * (1 / dist);
         const repel = cd * (1 / (dist * dist));
 
-        fx += dx * (attract - repel);
-        fy += dy * (attract - repel);
+        fx += ndx * (attract - repel);
+        fy += ndy * (attract - repel);
+
+        // Collision
+        const minDist = 20;
+        if (dist < minDist) {
+          const overlap = minDist - dist;
+
+          fx -= ndx * overlap * 0.2;
+          fy -= ndy * overlap * 0.2;
+
+          vx -= ndx * overlap * 0.1;
+          vy -= ndy * overlap * 0.1;
+        }
       }
 
       vx += fx * 0.5;

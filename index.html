@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8" />
-<title>Color Physics Dots – Smart Chunk Sorting</title>
+<title>Hue Smart Sorting Dots</title>
 <style>
   body {
     font-family: system-ui, sans-serif;
@@ -17,8 +17,8 @@
 
   #display {
     position: relative;
-    width: 800px;
-    height: 400px;
+    width: 900px;
+    height: 450px;
     border: 2px solid #444;
     border-radius: 8px;
     background: #1a1a1a;
@@ -27,8 +27,8 @@
 
   .dot {
     position: absolute;
-    width: 20px;
-    height: 20px;
+    width: 22px;
+    height: 22px;
     border-radius: 50%;
     cursor: grab;
     border: 1px solid #00000055;
@@ -62,13 +62,13 @@
 </head>
 <body>
 
-<h1>Color Physics Dots – Smart Chunk Sorting</h1>
+<h1>Hue Smart Sorting Dots</h1>
 
 <div class="controls">
   <input type="color" id="colorPicker" value="#ff0000" />
   <button id="addDotBtn">Add Dot</button>
   <button id="autoBtn">Auto‑Generate</button>
-  <button id="sortBtn">Smart Sort</button>
+  <button id="sortBtn">Smart Hue Sort</button>
   <button id="stopBtn">Force Stop</button>
   <button id="deleteBtn">Delete All</button>
 </div>
@@ -87,12 +87,30 @@ const colorPicker = document.getElementById("colorPicker");
 let isSorting = false;
 let sortInterval = null;
 
+// Convert hex → hue
+function hexToHue(hex) {
+  hex = hex.replace("#", "");
+  const r = parseInt(hex.substring(0,2),16)/255;
+  const g = parseInt(hex.substring(2,4),16)/255;
+  const b = parseInt(hex.substring(4,6),16)/255;
+
+  const max = Math.max(r,g,b), min = Math.min(r,g,b);
+  let h = 0;
+
+  if (max === min) h = 0;
+  else if (max === r) h = (60 * ((g-b)/(max-min)) + 360) % 360;
+  else if (max === g) h = 60 * ((b-r)/(max-min)) + 120;
+  else h = 60 * ((r-g)/(max-min)) + 240;
+
+  return h;
+}
+
 // Random position
 function getRandomPosition() {
   const rect = display.getBoundingClientRect();
   return {
-    x: Math.random() * (rect.width - 20),
-    y: Math.random() * (rect.height - 20)
+    x: Math.random() * (rect.width - 22),
+    y: Math.random() * (rect.height - 22)
   };
 }
 
@@ -119,6 +137,7 @@ function createDot(color) {
   setDotPosition(dot, pos.x, pos.y);
 
   dot.dataset.color = color;
+  dot.dataset.hue = hexToHue(color);
   dot.dataset.vx = 0;
   dot.dataset.vy = 0;
 
@@ -153,8 +172,8 @@ function enableDrag(dot) {
     let x = e.clientX - rect.left - offsetX;
     let y = e.clientY - rect.top - offsetY;
 
-    x = Math.max(0, Math.min(rect.width - 20, x));
-    y = Math.max(0, Math.min(rect.height - 20, y));
+    x = Math.max(0, Math.min(rect.width - 22, x));
+    y = Math.max(0, Math.min(rect.height - 22, y));
 
     setDotPosition(dot, x, y);
   }
@@ -185,39 +204,18 @@ function enableColorEdit(dot) {
     picker.addEventListener("input", () => {
       dot.style.backgroundColor = picker.value;
       dot.dataset.color = picker.value;
+      dot.dataset.hue = hexToHue(picker.value);
     });
 
     picker.addEventListener("blur", () => picker.remove());
   });
 }
 
-// Color distance (normalized)
-function hexToRgb(hex) {
-  hex = hex.replace("#", "");
-  const num = parseInt(hex, 16);
-  return {
-    r: (num >> 16) & 255,
-    g: (num >> 8) & 255,
-    b: num & 255
-  };
-}
-
-function colorDistance(c1, c2) {
-  const a = hexToRgb(c1);
-  const b = hexToRgb(c2);
-  const dr = a.r - b.r;
-  const dg = a.g - b.g;
-  const db = a.b - b.b;
-  return Math.sqrt(dr*dr + dg*dg + db*db) / 441.67;
-}
-
 // Force stop
 stopBtn.addEventListener("click", () => {
   if (sortInterval) clearInterval(sortInterval);
   isSorting = false;
-  addDotBtn.disabled = false;
-  autoBtn.disabled = false;
-  sortBtn.disabled = false;
+  unlockUI();
 });
 
 // Delete all dots
@@ -225,27 +223,18 @@ deleteBtn.addEventListener("click", () => {
   if (sortInterval) clearInterval(sortInterval);
   isSorting = false;
   display.innerHTML = "";
+  unlockUI();
+});
+
+// Unlock UI
+function unlockUI() {
   addDotBtn.disabled = false;
   autoBtn.disabled = false;
   sortBtn.disabled = false;
-});
-
-// Chunk zones (gravity wells)
-function getColorZone(color) {
-  const rect = display.getBoundingClientRect();
-  const zones = [
-    { x: rect.width * 0.25, y: rect.height * 0.25 },
-    { x: rect.width * 0.75, y: rect.height * 0.25 },
-    { x: rect.width * 0.25, y: rect.height * 0.75 },
-    { x: rect.width * 0.75, y: rect.height * 0.75 }
-  ];
-
-  const index = Math.abs([...color].reduce((a,c)=>a+c.charCodeAt(0),0)) % zones.length;
-  return zones[index];
 }
 
-// Smart sorting physics
-function startSmartSort() {
+// Smart hue sorting
+function startSmartHueSort() {
   const dots = Array.from(display.querySelectorAll(".dot"));
   if (dots.length < 2) return;
 
@@ -267,16 +256,17 @@ function startSmartSort() {
       let ay = parseFloat(A.dataset.y);
       let vx = parseFloat(A.dataset.vx);
       let vy = parseFloat(A.dataset.vy);
-
-      const colorA = A.dataset.color;
+      const hueA = parseFloat(A.dataset.hue);
 
       let fx = 0;
       let fy = 0;
 
-      // Gravity well (chunk zone)
-      const zone = getColorZone(colorA);
-      fx += (zone.x - ax) * 0.002;
-      fy += (zone.y - ay) * 0.002;
+      // Smooth gradient zone target
+      const targetX = (hueA / 360) * rect.width;
+      fx += (targetX - ax) * 0.004;
+
+      // Vertical centering
+      fy += ((rect.height / 2) - ay) * 0.002;
 
       for (let j = 0; j < dots.length; j++) {
         if (i === j) continue;
@@ -284,7 +274,6 @@ function startSmartSort() {
         const B = dots[j];
         const bx = parseFloat(B.dataset.x);
         const by = parseFloat(B.dataset.y);
-        const colorB = B.dataset.color;
 
         let dx = bx - ax;
         let dy = by - ay;
@@ -293,49 +282,34 @@ function startSmartSort() {
         const ndx = dx / dist;
         const ndy = dy / dist;
 
-        const cd = colorDistance(colorA, colorB);
-
-        // Similar hues attract strongly
-        const attract = (1 - cd) * (1 / dist);
-
-        // Opposites repel strongly at short range, weak at long range
-        const repel = cd * (1 / (dist * dist));
-
-        fx += ndx * (attract - repel);
-        fy += ndy * (attract - repel);
-
-        // Collision
-        const minDist = 20;
+        // Collision avoidance
+        const minDist = 22;
         if (dist < minDist) {
           const overlap = minDist - dist;
 
           // Push apart
-          fx -= ndx * overlap * 0.4;
-          fy -= ndy * overlap * 0.4;
+          fx -= ndx * overlap * 0.5;
+          fy -= ndy * overlap * 0.5;
 
-          vx -= ndx * overlap * 0.2;
-          vy -= ndy * overlap * 0.2;
-
-          // Smart steering (slide sideways)
-          const steerX = -ndy * overlap * 0.3;
-          const steerY = ndx * overlap * 0.3;
-
-          fx += steerX;
-          fy += steerY;
+          // Smart steering sideways
+          fx += -ndy * overlap * 0.4;
+          fy += ndx * overlap * 0.4;
         }
       }
 
-      vx += fx * 0.5;
-      vy += fy * 0.5;
+      // Apply physics
+      vx += fx;
+      vy += fy;
 
+      // Damping
       vx *= 0.85;
       vy *= 0.85;
 
       let newX = ax + vx;
       let newY = ay + vy;
 
-      newX = Math.max(0, Math.min(rect.width - 20, newX));
-      newY = Math.max(0, Math.min(rect.height - 20, newY));
+      newX = Math.max(0, Math.min(rect.width - 22, newX));
+      newY = Math.max(0, Math.min(rect.height - 22, newY));
 
       totalVelocity += Math.abs(vx) + Math.abs(vy);
 
@@ -345,13 +319,11 @@ function startSmartSort() {
       setDotPosition(A, newX, newY);
     }
 
-    // Auto-stop when velocity is basically zero
-    if (totalVelocity < 0.1) {
+    // Auto-stop when stable
+    if (totalVelocity < 0.05) {
       clearInterval(sortInterval);
       isSorting = false;
-      addDotBtn.disabled = false;
-      autoBtn.disabled = false;
-      sortBtn.disabled = false;
+      unlockUI();
     }
   }, 40);
 }
@@ -373,7 +345,7 @@ autoBtn.addEventListener("click", () => {
 });
 
 sortBtn.addEventListener("click", () => {
-  if (!isSorting) startSmartSort();
+  if (!isSorting) startSmartHueSort();
 });
 </script>
 

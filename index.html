@@ -1,83 +1,86 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8" />
+<meta charset="UTF-8">
 <title>Hue Smart Sorting Dots</title>
+
 <style>
-  body {
-    font-family: system-ui, sans-serif;
-    background: #111;
-    color: #eee;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    margin: 0;
-    padding: 20px;
-  }
+body {
+  font-family: system-ui, sans-serif;
+  background: #111;
+  color: #eee;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  margin: 0;
+  padding: 20px;
+}
 
-  #display {
-    position: relative;
-    width: 900px;
-    height: 450px;
-    border: 2px solid #444;
-    border-radius: 8px;
-    background: #1a1a1a;
-    overflow: hidden;
-  }
+#display {
+  position: relative;
+  width: 900px;
+  height: 450px;
+  border: 2px solid #444;
+  border-radius: 8px;
+  background: #1a1a1a;
+  overflow: hidden;
+}
 
-  .dot {
-    position: absolute;
-    width: 22px;
-    height: 22px;
-    border-radius: 50%;
-    cursor: grab;
-    border: 1px solid #00000055;
-    box-shadow: 0 0 4px #000000aa;
-    transition: background-color 0.2s;
-  }
+.dot {
+  position: absolute;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  cursor: grab;
+  border: 1px solid #0008;
+  box-shadow: 0 0 4px #000;
+  transition: background-color .2s;
+}
 
-  button {
-    padding: 6px 12px;
-    border-radius: 4px;
-    border: none;
-    cursor: pointer;
-    background: #3b82f6;
-    color: white;
-    font-size: 14px;
-  }
+button {
+  padding: 6px 12px;
+  border-radius: 4px;
+  border: none;
+  cursor: pointer;
+  background: #3b82f6;
+  color: white;
+  font-size: 14px;
+}
 
-  .controls {
-    display: flex;
-    gap: 10px;
-    margin-bottom: 15px;
-  }
+.controls {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 15px;
+}
 
-  input[type="color"] {
-    width: 40px;
-    height: 24px;
-    border: none;
-    background: transparent;
-  }
+input[type="color"] {
+  width: 40px;
+  height: 24px;
+}
 </style>
 </head>
+
 <body>
 
 <h1>Hue Smart Sorting Dots</h1>
 
 <div class="controls">
-  <input type="color" id="colorPicker" value="#ff0000" />
-  <button id="addDotBtn">Add Dot</button>
-  <button id="autoBtn">Auto‑Generate</button>
-  <button id="testBtn">Test Dots</button>
-  <button id="sortBtn">Smart Hue Sort</button>
-  <button id="stopBtn">Force Stop</button>
-  <button id="deleteBtn">Delete All</button>
+<input type="color" id="colorPicker" value="#ff0000">
+<button id="addDotBtn">Add Dot</button>
+<button id="autoBtn">Auto-Generate</button>
+<button id="testBtn">Test Dots</button>
+<button id="sortBtn">Smart Hue Sort</button>
+<button id="stopBtn">Force Stop</button>
+<button id="deleteBtn">Delete All</button>
 </div>
 
 <div id="display"></div>
 
+
 <script>
+
 const display = document.getElementById("display");
+
 const addDotBtn = document.getElementById("addDotBtn");
 const autoBtn = document.getElementById("autoBtn");
 const testBtn = document.getElementById("testBtn");
@@ -86,322 +89,768 @@ const stopBtn = document.getElementById("stopBtn");
 const deleteBtn = document.getElementById("deleteBtn");
 const colorPicker = document.getElementById("colorPicker");
 
+
 let isSorting = false;
 let sortInterval = null;
 
-// Convert hex → hue
+
+
+// ---------- COLOR FUNCTIONS ----------
+
 function hexToHue(hex) {
-  hex = hex.replace("#", "");
-  const r = parseInt(hex.substring(0,2),16)/255;
-  const g = parseInt(hex.substring(2,4),16)/255;
-  const b = parseInt(hex.substring(4,6),16)/255;
 
-  const max = Math.max(r,g,b), min = Math.min(r,g,b);
-  let h = 0;
+hex = hex.replace("#","");
 
-  if (max === min) h = 0;
-  else if (max === r) h = (60 * ((g-b)/(max-min)) + 360) % 360;
-  else if (max === g) h = 60 * ((b-r)/(max-min)) + 120;
-  else h = 60 * ((r-g)/(max-min)) + 240;
+let r = parseInt(hex.substring(0,2),16)/255;
+let g = parseInt(hex.substring(2,4),16)/255;
+let b = parseInt(hex.substring(4,6),16)/255;
 
-  return h;
+
+let max = Math.max(r,g,b);
+let min = Math.min(r,g,b);
+
+let h = 0;
+
+
+if(max === min){
+    h = 0;
+}
+else if(max === r){
+    h = (60*((g-b)/(max-min))+360)%360;
+}
+else if(max === g){
+    h = 60*((b-r)/(max-min))+120;
+}
+else{
+    h = 60*((r-g)/(max-min))+240;
 }
 
-// Convert hex → RGB
-function hexToRgb(hex) {
-  hex = hex.replace("#", "");
-  return {
-    r: parseInt(hex.substring(0,2),16),
-    g: parseInt(hex.substring(2,4),16),
-    b: parseInt(hex.substring(4,6),16)
-  };
+
+return h;
+
 }
 
-// Detect grayscale (black/white/gray)
-function isGrayscale(hex) {
-  const rgb = hexToRgb(hex);
-  const max = Math.max(rgb.r, rgb.g, rgb.b);
-  const min = Math.min(rgb.r, rgb.g, rgb.b);
-  const sat = (max - min) / (max || 1);
-  return sat < 0.08; // grayscale threshold
+
+
+function hexToRgb(hex){
+
+hex = hex.replace("#","");
+
+return {
+r:parseInt(hex.substring(0,2),16),
+g:parseInt(hex.substring(2,4),16),
+b:parseInt(hex.substring(4,6),16)
+};
+
 }
 
-// Random position
-function getRandomPosition() {
-  const rect = display.getBoundingClientRect();
-  return {
-    x: Math.random() * (rect.width - 22),
-    y: Math.random() * (rect.height - 22)
-  };
+
+
+function isGrayscale(hex){
+
+let rgb = hexToRgb(hex);
+
+let max = Math.max(rgb.r,rgb.g,rgb.b);
+let min = Math.min(rgb.r,rgb.g,rgb.b);
+
+return ((max-min)/(max||1)) < .08;
+
 }
 
-// Random color
-function randomColor() {
-  return "#" + Math.floor(Math.random() * 16777215).toString(16).padStart(6, "0");
+
+
+
+function randomColor(){
+
+return "#"+Math.floor(Math.random()*16777215)
+.toString(16)
+.padStart(6,"0");
+
 }
 
-// Set dot position
-function setDotPosition(dot, x, y) {
-  dot.style.left = x + "px";
-  dot.style.top = y + "px";
-  dot.dataset.x = x;
-  dot.dataset.y = y;
+
+
+
+function getRandomPosition(){
+
+let rect = display.getBoundingClientRect();
+
+return {
+x:Math.random()*(rect.width-22),
+y:Math.random()*(rect.height-22)
+};
+
 }
 
-// Create dot
-function createDot(color) {
-  const dot = document.createElement("div");
-  dot.className = "dot";
-  dot.style.backgroundColor = color;
 
-  const pos = getRandomPosition();
-  setDotPosition(dot, pos.x, pos.y);
 
-  dot.dataset.color = color;
-  dot.dataset.hue = hexToHue(color);
-  dot.dataset.vx = 0;
-  dot.dataset.vy = 0;
 
-  enableDrag(dot);
-  enableColorEdit(dot);
+function setDotPosition(dot,x,y){
 
-  display.appendChild(dot);
+dot.style.left=x+"px";
+dot.style.top=y+"px";
+
+dot.dataset.x=x;
+dot.dataset.y=y;
+
 }
 
-// Dragging
-function enableDrag(dot) {
-  let dragging = false;
-  let offsetX = 0;
-  let offsetY = 0;
 
-  dot.addEventListener("mousedown", (e) => {
-    if (isSorting) return;
-    dragging = true;
 
-    const rect = dot.getBoundingClientRect();
-    offsetX = e.clientX - rect.left;
-    offsetY = e.clientY - rect.top;
 
-    document.addEventListener("mousemove", move);
-    document.addEventListener("mouseup", stop);
-  });
+// ---------- DOT CREATION ----------
 
-  function move(e) {
-    if (!dragging) return;
 
-    const rect = display.getBoundingClientRect();
-    let x = e.clientX - rect.left - offsetX;
-    let y = e.clientY - rect.top - offsetY;
+function createDot(color){
 
-    x = Math.max(0, Math.min(rect.width - 22, x));
-    y = Math.max(0, Math.min(rect.height - 22, y));
+let dot=document.createElement("div");
 
-    setDotPosition(dot, x, y);
-  }
+dot.className="dot";
 
-  function stop() {
-    dragging = false;
-    document.removeEventListener("mousemove", move);
-    document.removeEventListener("mouseup", stop);
-  }
+dot.style.background=color;
+
+
+let pos=getRandomPosition();
+
+setDotPosition(dot,pos.x,pos.y);
+
+
+
+dot.dataset.color=color;
+dot.dataset.hue=hexToHue(color);
+
+
+// physics values
+
+dot.dataset.vx=0;
+dot.dataset.vy=0;
+
+
+// permanent grayscale placement offset
+
+dot.dataset.grayOffset=
+(Math.random()*80-40);
+
+
+
+dot.dataset.targetX=0;
+dot.dataset.targetY=0;
+
+
+
+enableDrag(dot);
+enableColorEdit(dot);
+
+
+display.appendChild(dot);
+
 }
 
-// Recoloring
-function enableColorEdit(dot) {
-  dot.addEventListener("click", (e) => {
-    if (isSorting) return;
 
-    const picker = document.createElement("input");
-    picker.type = "color";
-    picker.value = dot.dataset.color;
 
-    picker.style.position = "fixed";
-    picker.style.left = e.clientX + "px";
-    picker.style.top = e.clientY + "px";
 
-    document.body.appendChild(picker);
-    picker.click();
 
-    picker.addEventListener("input", () => {
-      dot.style.backgroundColor = picker.value;
-      dot.dataset.color = picker.value;
-      dot.dataset.hue = hexToHue(picker.value);
-    });
+// ---------- DRAGGING ----------
 
-    picker.addEventListener("blur", () => picker.remove());
-  });
+
+function enableDrag(dot){
+
+let dragging=false;
+let offsetX=0;
+let offsetY=0;
+
+
+dot.addEventListener("mousedown",e=>{
+
+if(isSorting)return;
+
+
+dragging=true;
+
+
+let rect=dot.getBoundingClientRect();
+
+offsetX=e.clientX-rect.left;
+offsetY=e.clientY-rect.top;
+
+
+document.addEventListener("mousemove",move);
+document.addEventListener("mouseup",stop);
+
+
+});
+
+
+
+function move(e){
+
+if(!dragging)return;
+
+
+let rect=display.getBoundingClientRect();
+
+
+let x=e.clientX-rect.left-offsetX;
+let y=e.clientY-rect.top-offsetY;
+
+
+x=Math.max(0,Math.min(rect.width-22,x));
+y=Math.max(0,Math.min(rect.height-22,y));
+
+
+setDotPosition(dot,x,y);
+
 }
+
+
+
+
+function stop(){
+
+dragging=false;
+
+document.removeEventListener("mousemove",move);
+document.removeEventListener("mouseup",stop);
+
+}
+
+}
+
+
+
+
+
+// ---------- COLOR EDIT ----------
+
+
+function enableColorEdit(dot){
+
+dot.addEventListener("click",e=>{
+
+if(isSorting)return;
+
+
+let picker=document.createElement("input");
+
+picker.type="color";
+picker.value=dot.dataset.color;
+
+
+picker.style.position="fixed";
+picker.style.left=e.clientX+"px";
+picker.style.top=e.clientY+"px";
+
+
+document.body.appendChild(picker);
+
+picker.click();
+
+
+
+picker.addEventListener("input",()=>{
+
+dot.style.background=picker.value;
+
+dot.dataset.color=picker.value;
+
+dot.dataset.hue=hexToHue(picker.value);
+
+});
+
+
+
+picker.addEventListener("blur",()=>picker.remove());
+
+
+});
+
+}
+ 
+// ---------- SORTING PHYSICS ENGINE ----------
+
+
+function startSmartHueSort(){
+
+const dots = Array.from(display.querySelectorAll(".dot"));
+
+if(dots.length < 2) return;
+
+
+isSorting=true;
+
+
+addDotBtn.disabled=true;
+autoBtn.disabled=true;
+sortBtn.disabled=true;
+testBtn.disabled=true;
+
+
+
+const rect=display.getBoundingClientRect();
+
+
+// Sort dots by hue
+
+dots.sort((a,b)=>{
+
+let ah=parseFloat(a.dataset.hue);
+let bh=parseFloat(b.dataset.hue);
+
+return ah-bh;
+
+});
+
+
+
+// Create target slots
+
+let padding=30;
+
+let usableWidth=rect.width-padding*2;
+
+
+dots.forEach((dot,index)=>{
+
+
+let x;
+
+if(isGrayscale(dot.dataset.color)){
+
+x=rect.width/2+
+parseFloat(dot.dataset.grayOffset);
+
+}
+else{
+
+x=padding+
+(index/(dots.length-1))*usableWidth;
+
+}
+
+
+
+let y=rect.height/2;
+
+
+
+dot.dataset.targetX=x;
+dot.dataset.targetY=y;
+
+
+
+dot.dataset.locked="false";
+
+
+});
+
+
+
+
+
+if(sortInterval)
+clearInterval(sortInterval);
+
+
+
+
+sortInterval=setInterval(()=>{
+
+
+let totalMotion=0;
+
+
+
+for(let i=0;i<dots.length;i++){
+
+
+let A=dots[i];
+
+
+let x=parseFloat(A.dataset.x);
+let y=parseFloat(A.dataset.y);
+
+
+let vx=parseFloat(A.dataset.vx);
+let vy=parseFloat(A.dataset.vy);
+
+
+
+let targetX=parseFloat(A.dataset.targetX);
+let targetY=parseFloat(A.dataset.targetY);
+
+
+
+
+
+let fx=0;
+let fy=0;
+
+
+
+// attraction toward assigned slot
+
+if(A.dataset.locked==="false"){
+
+
+fx+=(targetX-x)*0.012;
+fy+=(targetY-y)*0.012;
+
+
+}
+
+
+
+
+// collision physics
+
+
+for(let j=0;j<dots.length;j++){
+
+
+if(i===j) continue;
+
+
+let B=dots[j];
+
+
+let bx=parseFloat(B.dataset.x);
+let by=parseFloat(B.dataset.y);
+
+
+
+let dx=x-bx;
+let dy=y-by;
+
+
+let dist=Math.sqrt(dx*dx+dy*dy);
+
+
+let minDist=26;
+
+
+
+if(dist < minDist){
+
+
+if(dist===0)
+dist=0.01;
+
+
+
+let push=(minDist-dist)/dist;
+
+
+
+// push away
+
+fx += dx*push*0.35;
+fy += dy*push*0.35;
+
+
+
+}
+
+
+}
+
+
+
+
+
+// slow down motion
+
+vx+=fx;
+vy+=fy;
+
+
+vx*=0.82;
+vy*=0.82;
+
+
+
+
+// limit speed
+
+let speed=Math.sqrt(vx*vx+vy*vy);
+
+
+if(speed>5){
+
+vx=(vx/speed)*5;
+vy=(vy/speed)*5;
+
+}
+
+
+
+
+let newX=x+vx;
+let newY=y+vy;
+
+
+
+// keep inside box
+
+newX=Math.max(
+0,
+Math.min(rect.width-22,newX)
+);
+
+
+newY=Math.max(
+0,
+Math.min(rect.height-22,newY)
+);
+
+
+
+
+
+// check if settled
+
+
+let distanceToTarget=
+Math.sqrt(
+(targetX-newX)**2+
+(targetY-newY)**2
+);
+
+
+
+if(distanceToTarget<1.2 &&
+Math.abs(vx)<0.08 &&
+Math.abs(vy)<0.08){
+
+
+newX=targetX;
+newY=targetY;
+
+
+vx=0;
+vy=0;
+
+
+A.dataset.locked="true";
+
+
+}
+
+
+
+
+
+// save physics
+
+
+A.dataset.vx=vx;
+A.dataset.vy=vy;
+
+
+setDotPosition(A,newX,newY);
+
+
+
+totalMotion+=
+Math.abs(vx)+Math.abs(vy);
+
+
+
+}
+
+
+
+// stop when everything is settled
+
+
+let allLocked=dots.every(
+d=>d.dataset.locked==="true"
+);
+
+
+
+if(allLocked || totalMotion<0.05){
+
+
+clearInterval(sortInterval);
+
+
+isSorting=false;
+
+
+dots.forEach(d=>{
+
+d.dataset.vx=0;
+d.dataset.vy=0;
+
+});
+
+
+unlockUI();
+
+
+}
+
+
+
+},30);
+
+
+
+}
+
+
+
+
+// ---------- RANDOM DOT GENERATION ----------
+
+
+function autoGenerateDots(count=40){
+
+
+for(let i=0;i<count;i++){
+
+createDot(randomColor());
+
+}
+
+
+}
+ 
+// ---------- UI CONTROL ----------
+
+
+function unlockUI(){
+
+addDotBtn.disabled=false;
+autoBtn.disabled=false;
+sortBtn.disabled=false;
+testBtn.disabled=false;
+
+}
+
+
+
+
 
 // Force stop
-stopBtn.addEventListener("click", () => {
-  if (sortInterval) clearInterval(sortInterval);
-  isSorting = false;
-  unlockUI();
+
+stopBtn.addEventListener("click",()=>{
+
+
+if(sortInterval)
+clearInterval(sortInterval);
+
+
+isSorting=false;
+
+
+unlockUI();
+
+
 });
+
+
+
+
 
 // Delete all dots
-deleteBtn.addEventListener("click", () => {
-  if (sortInterval) clearInterval(sortInterval);
-  isSorting = false;
-  display.innerHTML = "";
-  unlockUI();
+
+deleteBtn.addEventListener("click",()=>{
+
+
+if(sortInterval)
+clearInterval(sortInterval);
+
+
+isSorting=false;
+
+
+display.innerHTML="";
+
+
+unlockUI();
+
+
 });
 
-// Unlock UI
-function unlockUI() {
-  addDotBtn.disabled = false;
-  autoBtn.disabled = false;
-  sortBtn.disabled = false;
-  testBtn.disabled = false;
+
+
+
+
+
+// ---------- TEST COLORS ----------
+
+
+testBtn.addEventListener("click",()=>{
+
+
+const testColors=[
+
+"#ff0000",
+"#ff7f00",
+"#ffff00",
+"#00ff00",
+"#00ffff",
+"#0000ff",
+"#8000ff",
+"#ffffff",
+"#888888",
+"#000000"
+
+];
+
+
+
+testColors.forEach(c=>{
+
+createDot(c);
+
+});
+
+
+});
+
+
+
+
+
+
+// ---------- BUTTON EVENTS ----------
+
+
+addDotBtn.addEventListener("click",()=>{
+
+createDot(colorPicker.value);
+
+});
+
+
+
+
+autoBtn.addEventListener("click",()=>{
+
+autoGenerateDots(40);
+
+});
+
+
+
+
+
+sortBtn.addEventListener("click",()=>{
+
+
+if(!isSorting){
+
+startSmartHueSort();
+
 }
 
-// Smart hue sorting
-function startSmartHueSort() {
-  const dots = Array.from(display.querySelectorAll(".dot"));
-  if (dots.length < 2) return;
 
-  isSorting = true;
-  addDotBtn.disabled = true;
-  autoBtn.disabled = true;
-  sortBtn.disabled = true;
-  testBtn.disabled = true;
-
-  const rect = display.getBoundingClientRect();
-
-  if (sortInterval) clearInterval(sortInterval);
-
-  sortInterval = setInterval(() => {
-    let totalVelocity = 0;
-
-    for (let i = 0; i < dots.length; i++) {
-      const A = dots[i];
-      let ax = parseFloat(A.dataset.x);
-      let ay = parseFloat(A.dataset.y);
-      let vx = parseFloat(A.dataset.vx);
-      let vy = parseFloat(A.dataset.vy);
-      const hueA = parseFloat(A.dataset.hue);
-      const colorA = A.dataset.color;
-
-      let fx = 0;
-      let fy = 0;
-
-      // Smooth gradient zone target
-      let targetX;
-
-      if (isGrayscale(colorA)) {
-        // grayscale → center band instead of exact center
-        targetX = (rect.width / 2) + (Math.random() * 80 - 40);
-      } else {
-        targetX = (hueA / 360) * rect.width;
-      }
-
-      fx += (targetX - ax) * 0.004;
-
-      // Vertical centering
-      if (isGrayscale(colorA)) {
-        fy += ((rect.height / 2) - ay) * 0.004;
-      } else {
-        fy += ((rect.height / 2) - ay) * 0.002;
-      }
-
-      // Collision + smart steering
-      for (let j = 0; j < dots.length; j++) {
-        if (i === j) continue;
-
-        const B = dots[j];
-        const bx = parseFloat(B.dataset.x);
-        const by = parseFloat(B.dataset.y);
-
-        let dx = bx - ax;
-        let dy = by - ay;
-        let dist = Math.sqrt(dx*dx + dy*dy) || 0.001;
-
-        const ndx = dx / dist;
-        const ndy = dy / dist;
-
-        const minDist = 22;
-        if (dist < minDist) {
-          const overlap = minDist - dist;
-
-          // Push apart
-          fx -= ndx * overlap * 0.5;
-          fy -= ndy * overlap * 0.5;
-
-          // Smart steering sideways
-          fx += -ndy * overlap * 0.4;
-          fy += ndx * overlap * 0.4;
-        }
-      }
-
-      // Apply physics
-      vx += fx;
-      vy += fy;
-
-      // Damping
-      vx *= 0.85;
-      vy *= 0.85;
-
-      let newX = ax + vx;
-      let newY = ay + vy;
-
-      newX = Math.max(0, Math.min(rect.width - 22, newX));
-      newY = Math.max(0, Math.min(rect.height - 22, newY));
-
-      totalVelocity += Math.abs(vx) + Math.abs(vy);
-
-      A.dataset.vx = vx;
-      A.dataset.vy = vy;
-
-      setDotPosition(A, newX, newY);
-    }
-
-    // Auto-stop when stable
-    if (totalVelocity < 0.05) {
-      clearInterval(sortInterval);
-      isSorting = false;
-      unlockUI();
-    }
-  }, 40);
-}
-
-// Auto-generate random dots
-function autoGenerateDots(count = 40) {
-  for (let i = 0; i < count; i++) {
-    createDot(randomColor());
-  }
-}
-
-// Test dots button
-testBtn.addEventListener("click", () => {
-  const testColors = [
-    "#ff0000", // red
-    "#ff7f00", // orange
-    "#ffff00", // yellow
-    "#00ff00", // green
-    "#0000ff", // blue
-    "#8000ff", // purple
-    "#ffffff", // white
-    "#888888", // gray
-    "#000000"  // black
-  ];
-
-  for (const c of testColors) {
-    createDot(c);
-  }
 });
 
-// Events
-addDotBtn.addEventListener("click", () => {
-  createDot(colorPicker.value);
-});
 
-autoBtn.addEventListener("click", () => {
-  autoGenerateDots(40);
-});
 
-sortBtn.addEventListener("click", () => {
-  if (!isSorting) startSmartHueSort();
-});
 </script>
 
 </body>

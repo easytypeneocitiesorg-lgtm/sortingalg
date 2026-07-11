@@ -72,10 +72,6 @@
 </div>
 
 <script>
-/* ---------------------------------------------------------
-   BAR MODE ONLY
---------------------------------------------------------- */
-
 let bars = [];
 let barSortInterval = null;
 
@@ -84,15 +80,11 @@ const barGenerateBtn = document.getElementById("barGenerateBtn");
 const barSortBtn = document.getElementById("barSortBtn");
 const barStopBtn = document.getElementById("barStopBtn");
 
-/* ---------------- CLEAR BARS ---------------- */
-
 function clearBars() {
   display.innerHTML = "";
   bars = [];
   if (barSortInterval) clearInterval(barSortInterval);
 }
-
-/* ---------------- RANDOM COLOR ---------------- */
 
 function randomColor() {
   const r = Math.floor(Math.random() * 256);
@@ -100,8 +92,6 @@ function randomColor() {
   const b = Math.floor(Math.random() * 256);
   return `rgb(${r},${g},${b})`;
 }
-
-/* ---------------- RANDOM BAR GENERATION ---------------- */
 
 barGenerateBtn.addEventListener("click", () => {
   clearBars();
@@ -126,6 +116,8 @@ barGenerateBtn.addEventListener("click", () => {
 
     const bar = document.createElement("div");
     bar.className = "bar";
+
+    bar.style.width = barWidth + "px";
     bar.style.height = height + "px";
     bar.style.left = (i * barSpacing) + "px";
     bar.style.backgroundColor = randomColor();
@@ -137,8 +129,6 @@ barGenerateBtn.addEventListener("click", () => {
   }
 });
 
-/* ---------------- SORTING ---------------- */
-
 barSortBtn.addEventListener("click", () => {
   if (bars.length === 0) return;
   startHeightSort();
@@ -147,10 +137,6 @@ barSortBtn.addEventListener("click", () => {
 barStopBtn.addEventListener("click", () => {
   if (barSortInterval) clearInterval(barSortInterval);
 });
-
-/* ---------------------------------------------------------
-   SORT BY HEIGHT ONLY (FAST)
---------------------------------------------------------- */
 
 function startHeightSort() {
   let i = 0;

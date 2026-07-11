@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8" />
-<title>Color Physics Dots – Chunk Clustering</title>
+<title>Color Physics Dots – Smart Chunk Sorting</title>
 <style>
   body {
     font-family: system-ui, sans-serif;
@@ -62,14 +62,15 @@
 </head>
 <body>
 
-<h1>Color Physics Dots – Chunk Clustering</h1>
+<h1>Color Physics Dots – Smart Chunk Sorting</h1>
 
 <div class="controls">
   <input type="color" id="colorPicker" value="#ff0000" />
   <button id="addDotBtn">Add Dot</button>
   <button id="autoBtn">Auto‑Generate</button>
-  <button id="sortBtn">Chunk Sort</button>
+  <button id="sortBtn">Smart Sort</button>
   <button id="stopBtn">Force Stop</button>
+  <button id="deleteBtn">Delete All</button>
 </div>
 
 <div id="display"></div>
@@ -80,6 +81,7 @@ const addDotBtn = document.getElementById("addDotBtn");
 const autoBtn = document.getElementById("autoBtn");
 const sortBtn = document.getElementById("sortBtn");
 const stopBtn = document.getElementById("stopBtn");
+const deleteBtn = document.getElementById("deleteBtn");
 const colorPicker = document.getElementById("colorPicker");
 
 let isSorting = false;
@@ -218,6 +220,16 @@ stopBtn.addEventListener("click", () => {
   sortBtn.disabled = false;
 });
 
+// Delete all dots
+deleteBtn.addEventListener("click", () => {
+  if (sortInterval) clearInterval(sortInterval);
+  isSorting = false;
+  display.innerHTML = "";
+  addDotBtn.disabled = false;
+  autoBtn.disabled = false;
+  sortBtn.disabled = false;
+});
+
 // Chunk zones (gravity wells)
 function getColorZone(color) {
   const rect = display.getBoundingClientRect();
@@ -228,13 +240,12 @@ function getColorZone(color) {
     { x: rect.width * 0.75, y: rect.height * 0.75 }
   ];
 
-  // Map colors to zones deterministically
-  const index = Math.abs(color.hashCode || [...color].reduce((a,c)=>a+c.charCodeAt(0),0)) % zones.length;
+  const index = Math.abs([...color].reduce((a,c)=>a+c.charCodeAt(0),0)) % zones.length;
   return zones[index];
 }
 
-// Physics sort with chunking + collisions + auto-stop
-function startColorPhysicsSort() {
+// Smart sorting physics
+function startSmartSort() {
   const dots = Array.from(display.querySelectorAll(".dot"));
   if (dots.length < 2) return;
 
@@ -264,10 +275,8 @@ function startColorPhysicsSort() {
 
       // Gravity well (chunk zone)
       const zone = getColorZone(colorA);
-      let zx = zone.x - ax;
-      let zy = zone.y - ay;
-      fx += zx * 0.002;
-      fy += zy * 0.002;
+      fx += (zone.x - ax) * 0.002;
+      fy += (zone.y - ay) * 0.002;
 
       for (let j = 0; j < dots.length; j++) {
         if (i === j) continue;
@@ -300,11 +309,19 @@ function startColorPhysicsSort() {
         if (dist < minDist) {
           const overlap = minDist - dist;
 
+          // Push apart
           fx -= ndx * overlap * 0.4;
           fy -= ndy * overlap * 0.4;
 
           vx -= ndx * overlap * 0.2;
           vy -= ndy * overlap * 0.2;
+
+          // Smart steering (slide sideways)
+          const steerX = -ndy * overlap * 0.3;
+          const steerY = ndx * overlap * 0.3;
+
+          fx += steerX;
+          fy += steerY;
         }
       }
 
@@ -356,7 +373,7 @@ autoBtn.addEventListener("click", () => {
 });
 
 sortBtn.addEventListener("click", () => {
-  if (!isSorting) startColorPhysicsSort();
+  if (!isSorting) startSmartSort();
 });
 </script>
 

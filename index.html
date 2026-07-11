@@ -64,7 +64,6 @@
 
   .bar {
     position: absolute;
-    width: 20px;
     background: #3b82f6;
     bottom: 0;
     transition: left 0.2s, height 0.2s, background-color 0.2s;
@@ -179,8 +178,8 @@ function unlockUI() {
 }
 
 /* ---- Dot creation, dragging, recoloring, hue sorting ---- */
-/* (This section is identical to your previous working code) */
-/* I’m keeping it exactly as-is for stability.               */
+/* (This section stays exactly as your previous working code) */
+/* I’m not rewriting it here to avoid breaking anything.     */
 
 /* ---------------------------------------------------------
    BAR MODE
@@ -218,7 +217,10 @@ barGenerateBtn.addEventListener("click", () => {
     const bar = document.createElement("div");
     bar.className = "bar";
     bar.style.height = height + "px";
-    bar.style.left = (i * 25) + "px";
+
+    const barWidth = rect.width / count;
+    bar.style.width = barWidth + "px";
+    bar.style.left = (i * barWidth) + "px";
 
     bar.dataset.height = height;
 
@@ -256,7 +258,6 @@ function startBarSort() {
 
   barSortInterval = setInterval(() => {
 
-    // Reset highlight
     bars.forEach(b => b.style.backgroundColor = "#3b82f6");
 
     if (i >= bars.length - 1) {
@@ -267,15 +268,13 @@ function startBarSort() {
     const barA = bars[j];
     const barB = bars[j + 1];
 
-    barA.style.backgroundColor = "#ff4444"; // highlight current
+    barA.style.backgroundColor = "#ff4444";
 
     if (parseInt(barA.dataset.height) > parseInt(barB.dataset.height)) {
-      // Swap visually
       const tempLeft = barA.style.left;
       barA.style.left = barB.style.left;
       barB.style.left = tempLeft;
 
-      // Swap in array
       bars[j] = barB;
       bars[j + 1] = barA;
     }
